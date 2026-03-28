@@ -71,29 +71,6 @@ Go to **http://localhost:3000** — the full app loads from there.
 
 ---
 
-## 🌐 How to Deploy Online (Free)
-
-### Backend → Render.com
-1. Push your project to GitHub
-2. Go to https://render.com → New Web Service
-3. Connect your GitHub repo
-4. Set **Start Command** to: `npm start`
-5. Add environment variable: `ANTHROPIC_API_KEY` = your key
-6. Deploy — you'll get a URL like `https://recyclix-ai.onrender.com`
-
-### Frontend → Vercel or Netlify
-1. Go to https://vercel.com → New Project → Import from GitHub
-2. No build command needed — it serves static files directly
-3. Done — you'll get a URL like `https://recyclix-ai.vercel.app`
-
-### Final Step After Deploying
-Open `script.js` and update this line with your Render URL:
-```javascript
-'https://your-render-app-name.onrender.com' // ← Replace this
-```
-
----
-
 ## 🧠 How It Works
 
 ```
@@ -103,9 +80,9 @@ TensorFlow MobileNet classifies it in the browser
        ↓
 script.js sends label to server.js (POST /api/classify)
        ↓
-server.js calls Claude API with the label
+server.js calls GEMINI API with the label
        ↓
-Claude returns disposal advice
+Gemini returns disposal advice
        ↓
 advice shown in chat bubble on the right
        ↓
