@@ -139,7 +139,7 @@ scan saved to localStorage → updates dashboard charts
 
 ## 🔐 Security Notes
 
-- Your `ANTHROPIC_API_KEY` is stored in `.env` and **never** sent to the frontend
+- Your `GEMINI_API_KEY` is stored in `.env` and **never** sent to the frontend
 - The `.gitignore` file ensures `.env` is never uploaded to GitHub
 - All Claude API calls happen server-side in `server.js`
 
