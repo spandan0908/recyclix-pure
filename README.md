@@ -2,7 +2,7 @@
 
 > Turning Trash into Data-Driven Insights using Computer Vision + Claude AI
 
-A smart web application that automatically classifies waste from images using TensorFlow.js MobileNet, then uses the Claude AI (Anthropic) to provide intelligent disposal advice and recycling recommendations — built for Bhopal Smart City.
+A smart web application that automatically classifies waste from images using TensorFlow.js MobileNet, then uses the Gemini AI to provide intelligent disposal advice and recycling recommendations — built for Bhopal Smart City.
 
 ---
 
