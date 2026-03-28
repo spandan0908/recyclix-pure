@@ -1,0 +1,357 @@
+// --- Typewriter Effect ---
+const tagline = "Turning Trash into Data-Driven Insights ♻️";
+const typewriterEl = document.getElementById("typewriter-text");
+let charIndex = 0;
+
+function typeWriter() {
+    if (charIndex < tagline.length) {
+        typewriterEl.innerHTML += tagline.charAt(charIndex);
+        charIndex++;
+        setTimeout(typeWriter, 50);
+    }
+}
+setTimeout(typeWriter, 500);
+
+// --- Dark Mode Toggle ---
+const darkModeToggle = document.getElementById("darkModeToggle");
+const rootHtml = document.documentElement;
+
+darkModeToggle.addEventListener("click", () => {
+    if (rootHtml.getAttribute("data-theme") === "dark") {
+        rootHtml.removeAttribute("data-theme");
+        darkModeToggle.innerHTML = '<i class="fa-solid fa-moon"></i>';
+    } else {
+        rootHtml.setAttribute("data-theme", "dark");
+        darkModeToggle.innerHTML = '<i class="fa-solid fa-sun"></i>';
+    }
+});
+
+// --- File Upload & Camera Integration ---
+const uploadZone = document.getElementById("uploadZone");
+const fileInput = document.getElementById("fileInput");
+const cameraInput = document.getElementById("cameraInput");
+const uploadIdle = document.getElementById("uploadIdle");
+const previewContainer = document.getElementById("previewContainer");
+const imagePreview = document.getElementById("imagePreview");
+const scanLine = document.getElementById("scanLine");
+const previewOverlay = document.getElementById("previewOverlay");
+const uploadLoading = document.getElementById("uploadLoading");
+const uploadResult = document.getElementById("uploadResult");
+const resultChat = document.getElementById("resultChat");
+const resultTitle = document.getElementById("resultTitle");
+const resultTags = document.getElementById("resultTags");
+
+// --- TensorFlow.js MobileNet Model ---
+let aiModel = null;
+if (typeof mobilenet !== 'undefined') {
+    mobilenet.load().then(model => {
+        aiModel = model;
+        console.log("MobileNet AI Model Loaded Successfully!");
+    }).catch(err => console.error("Model load error:", err));
+}
+
+function handleImageInput(event) {
+    const file = event.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            // Hide idle state, show preview and scanning animation
+            uploadIdle.classList.add("hidden");
+            uploadResult.classList.add("hidden");
+            resultChat.classList.add("hidden");
+            
+            previewContainer.classList.remove("hidden");
+            // Set source first to trigger onload
+            imagePreview.onload = () => {
+                if (aiModel) {
+                    aiModel.classify(imagePreview).then(predictions => {
+                        const topPrediction = predictions[0];
+                        const label = topPrediction.className.split(',')[0].trim();
+                        resultTitle.innerHTML = label.charAt(0).toUpperCase() + label.slice(1);
+                        
+                        // Waste Categorization Logic
+                        let tagStyle = "background: #fefce8; color: #854d0e;";
+                        let tagIcon = "fa-trash", tagText = "General Waste";
+                        const lowerLabel = label.toLowerCase();
+                        
+                        if (/(plastic|bottle|jug|cup|container|bag|wrapper|packaging)/.test(lowerLabel)) {
+                            tagStyle = "background: #dbeafe; color: #1e3a8a;";
+                            tagIcon = "fa-recycle"; tagText = "Plastic Recycling (Blue Bin)";
+                        } else if (/(paper|cardboard|carton|envelope|box|book|magazine)/.test(lowerLabel)) {
+                            tagStyle = "background: #dbeafe; color: #1e3a8a;";
+                            tagIcon = "fa-box"; tagText = "Paper/Cardboard (Blue Bin)";
+                        } else if (/(glass|jar|wine|beer)/.test(lowerLabel)) {
+                            tagStyle = "background: #dcfce3; color: #166534;";
+                            tagIcon = "fa-wine-glass"; tagText = "Glass (Green Bin)";
+                        } else if (/(metal|can|tin|aluminum|steel|spoon|fork)/.test(lowerLabel)) {
+                            tagStyle = "background: #e2e8f0; color: #334155;";
+                            tagIcon = "fa-spray-can"; tagText = "Metal/Aluminium (Blue Bin)";
+                        } else if (/(apple|banana|orange|fruit|vegetable|food|plant|leaf|wood)/.test(lowerLabel)) {
+                            tagStyle = "background: #dcfce3; color: #166534;";
+                            tagIcon = "fa-leaf"; tagText = "Organic Waste (Compost)";
+                        } else if (/(computer|laptop|phone|monitor|mouse|keyboard|screen|tv)/.test(lowerLabel)) {
+                            tagStyle = "background: #fee2e2; color: #991b1b;";
+                            tagIcon = "fa-plug"; tagText = "E-Waste / Hazardous";
+                        }
+                        
+                        let htmlTags = `<span class="tag" style="${tagStyle}"><i class="fa-solid ${tagIcon}"></i> ${tagText}</span>`;
+                        htmlTags += `<span class="tag tag-green"><i class="fa-solid fa-leaf"></i> ${(topPrediction.probability * 100).toFixed(1)}% Confidence</span>`;
+                        resultTags.innerHTML = htmlTags;
+
+                        // Add processing delay visual
+                        setTimeout(() => {
+                            uploadLoading.classList.add("hidden");
+                            scanLine.classList.add("hidden");
+                            previewOverlay.style.display = "none";
+                            uploadResult.classList.remove("hidden");
+                            resultChat.classList.remove("hidden");
+                        }, 1000);
+                    });
+                } else {
+                    resultTitle.innerHTML = "Model Still Loading...";
+                    setTimeout(() => {
+                        uploadLoading.classList.add("hidden");
+                        scanLine.classList.add("hidden");
+                        previewOverlay.style.display = "none";
+                        uploadResult.classList.remove("hidden");
+                    }, 1000);
+                }
+            };
+            
+            // Set src and display scan-line immediately
+            imagePreview.src = e.target.result;
+            scanLine.classList.remove("hidden");
+            previewOverlay.style.display = "block";
+            uploadLoading.classList.remove("hidden");
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+fileInput.addEventListener("change", handleImageInput);
+cameraInput.addEventListener("change", handleImageInput);
+
+// Drag and drop support
+uploadZone.addEventListener("dragover", (e) => { e.preventDefault(); uploadZone.style.borderColor = "var(--primary-aqua)"; });
+uploadZone.addEventListener("dragleave", (e) => { e.preventDefault(); uploadZone.style.borderColor = "#cbd5e1"; });
+uploadZone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    uploadZone.style.borderColor = "#cbd5e1";
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        fileInput.files = e.dataTransfer.files;
+        handleImageInput({target: fileInput});
+    }
+});
+
+// --- Animated Counters (Intersection Observer) ---
+const counters = document.querySelectorAll('.counter');
+let countersAnimated = false;
+
+const animateCounters = () => {
+    counters.forEach(counter => {
+        const target = +counter.getAttribute('data-target');
+        const suffix = counter.getAttribute('data-suffix') || '';
+        const duration = 2000;
+        const speed = target / (duration / 16); // 60fps
+        
+        let current = 0;
+        const updateCounter = () => {
+            current += speed;
+            if (current < target) {
+                // If the number is large, format it
+                if (target > 10000) {
+                    counter.innerText = (current / 1000000).toFixed(1) + 'M' + suffix;
+                } else {
+                    counter.innerText = Math.ceil(current) + suffix;
+                }
+                requestAnimationFrame(updateCounter);
+            } else {
+                if (target > 10000) {
+                    counter.innerText = (target / 1000000).toFixed(1) + 'M' + suffix;
+                } else {
+                    counter.innerText = target + suffix;
+                }
+            }
+        };
+        updateCounter();
+    });
+};
+
+const observerOptions = {
+    threshold: 0.5
+};
+
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting && !countersAnimated) {
+            animateCounters();
+            countersAnimated = true;
+        }
+    });
+}, observerOptions);
+
+const impactSection = document.getElementById('impact');
+if (impactSection) {
+    observer.observe(impactSection);
+}
+
+// --- Chart.js Initializations (Bhopal Context) ---
+document.addEventListener("DOMContentLoaded", function() {
+    
+    // Dataset for Bhopal stats
+    const chartData = {
+        city: {
+            accuracy: [85, 88, 91, 94, 96, 98],
+            labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+            reduced: [180, 195, 210, 240, 260, 280],
+            recycled: [90, 110, 130, 160, 185, 210]
+        },
+        zone: {
+            accuracy: [92, 95, 96, 99],
+            labels: ["Zone 1 (MP Nagar)", "Zone 2 (New Market)", "Zone 3 (BHEL)", "Zone 4 (Kolar)"],
+            reduced: [45, 55, 60, 70],
+            recycled: [30, 42, 50, 65]
+        },
+        trends: {
+            accuracy: [80, 85, 90, 95, 97, 98, 99],
+            labels: ["2020", "2021", "2022", "2023", "2024", "2025", "2026"],
+            reduced: [500, 600, 750, 900, 1100, 1350, 1600],
+            recycled: [200, 350, 500, 700, 950, 1200, 1500]
+        }
+    };
+
+    let accuracyChart, reductionChart;
+
+    function renderCharts(view) {
+        const data = chartData[view];
+        
+        // Destroy existing to prevent overlap
+        if(accuracyChart) accuracyChart.destroy();
+        if(reductionChart) reductionChart.destroy();
+
+        // Accuracy Chart
+        const ctxAccuracy = document.getElementById('accuracyChart').getContext('2d');
+        accuracyChart = new Chart(ctxAccuracy, {
+            type: view === 'zone' ? 'bar' : 'line',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: "Segregation Accuracy (%)",
+                    data: data.accuracy,
+                    borderColor: "#06B6D4",
+                    backgroundColor: view === 'zone' ? "rgba(6, 182, 212, 0.6)" : "rgba(6, 182, 212, 0.1)",
+                    borderWidth: 3,
+                    tension: 0.4,
+                    fill: view !== 'zone'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { min: 70, max: 100 } }
+            }
+        });
+
+        // Processing Chart
+        const ctxReduction = document.getElementById('reductionChart').getContext('2d');
+        reductionChart = new Chart(ctxReduction, {
+            type: 'bar',
+            data: {
+                labels: data.labels,
+                datasets: [
+                    {
+                        label: "Mixed Solid Waste (Tons)",
+                        data: data.reduced,
+                        backgroundColor: "#1E3A8A",
+                        borderRadius: 4
+                    },
+                    {
+                        label: "Processed/Recycled (Tons)",
+                        data: data.recycled,
+                        backgroundColor: "#22C55E",
+                        borderRadius: 4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { x: { stacked: true }, y: { stacked: true } }
+            }
+        });
+    }
+
+    // Initial render
+    renderCharts('city');
+
+    // Dashboard Tabs Logic
+    const tabs = document.querySelectorAll('#dashboardTabs .tab');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', (e) => {
+            tabs.forEach(t => t.classList.remove('active'));
+            e.target.classList.add('active');
+            renderCharts(e.target.getAttribute('data-view'));
+        });
+    });
+});
+
+// --- Interactive Particles Background ---
+const canvas = document.getElementById("particles-bg");
+const ctx = canvas.getContext("2d");
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let particlesArray = [];
+const isDarkMode = () => document.documentElement.getAttribute("data-theme") === "dark";
+
+class Particle {
+    constructor() {
+        this.x = Math.random() * canvas.width;
+        this.y = Math.random() * canvas.height;
+        this.size = Math.random() * 3 + 1;
+        this.speedX = Math.random() * 1 - 0.5;
+        this.speedY = Math.random() * 1 - 0.5;
+    }
+    update() {
+        this.x += this.speedX;
+        this.y += this.speedY;
+        if (this.size > 0.2) this.size -= 0.01;
+        if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) {
+            this.x = Math.random() * canvas.width;
+            this.y = Math.random() * canvas.height;
+            this.size = Math.random() * 3 + 1;
+        }
+    }
+    draw() {
+        ctx.fillStyle = isDarkMode() ? 'rgba(6, 182, 212, 0.4)' : 'rgba(30, 58, 138, 0.2)';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+
+function initParticles() {
+    particlesArray = [];
+    let numParticles = (canvas.width * canvas.height) / 10000;
+    for (let i = 0; i < numParticles; i++) {
+        particlesArray.push(new Particle());
+    }
+}
+initParticles();
+
+function animateParticles() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (let i = 0; i < particlesArray.length; i++) {
+        particlesArray[i].update();
+        particlesArray[i].draw();
+    }
+    requestAnimationFrame(animateParticles);
+}
+animateParticles();
+
+window.addEventListener("resize", () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    initParticles();
+});
