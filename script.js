@@ -1,3 +1,17 @@
+// =====================================================
+//  Recyclix AI — Main Script
+//  Updated with: Claude API chat, localStorage
+//  analytics, and mobile hamburger menu
+// =====================================================
+
+// ── Config ──────────────────────────────────────────
+// If running locally: http://localhost:3000
+// After deploying backend on Render: replace with your Render URL
+const SERVER_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:3000'
+    : 'https://your-render-app-name.onrender.com'; // ← Replace this after deploying
+
+
 // --- Typewriter Effect ---
 const tagline = "Turning Trash into Data-Driven Insights ♻️";
 const typewriterEl = document.getElementById("typewriter-text");
@@ -12,6 +26,7 @@ function typeWriter() {
 }
 setTimeout(typeWriter, 500);
 
+
 // --- Dark Mode Toggle ---
 const darkModeToggle = document.getElementById("darkModeToggle");
 const rootHtml = document.documentElement;
@@ -25,6 +40,115 @@ darkModeToggle.addEventListener("click", () => {
         darkModeToggle.innerHTML = '<i class="fa-solid fa-sun"></i>';
     }
 });
+
+
+// ── Mobile Hamburger Menu ────────────────────────────
+const hamburgerBtn = document.getElementById("hamburgerBtn");
+const navLinks = document.querySelector(".nav-links");
+
+if (hamburgerBtn) {
+    hamburgerBtn.addEventListener("click", () => {
+        navLinks.classList.toggle("nav-open");
+        const isOpen = navLinks.classList.contains("nav-open");
+        hamburgerBtn.innerHTML = isOpen
+            ? '<i class="fa-solid fa-xmark"></i>'
+            : '<i class="fa-solid fa-bars"></i>';
+    });
+
+    // Close menu when any nav link is clicked
+    document.querySelectorAll(".nav-links a").forEach(link => {
+        link.addEventListener("click", () => {
+            navLinks.classList.remove("nav-open");
+            hamburgerBtn.innerHTML = '<i class="fa-solid fa-bars"></i>';
+        });
+    });
+}
+
+
+// ── LocalStorage Analytics Helpers ──────────────────
+// Saves every scan so the dashboard charts can use real data
+
+function saveScanResult(label, category) {
+    try {
+        const scans = JSON.parse(localStorage.getItem('recyclix_scans') || '[]');
+        scans.push({
+            label,
+            category,
+            date: new Date().toISOString(),
+            month: new Date().toLocaleString('default', { month: 'short' })
+        });
+        // Keep only last 500 scans to avoid filling up storage
+        if (scans.length > 500) scans.shift();
+        localStorage.setItem('recyclix_scans', JSON.stringify(scans));
+    } catch (e) {
+        console.warn('Could not save scan to localStorage:', e);
+    }
+}
+
+function getScanStats() {
+    try {
+        const scans = JSON.parse(localStorage.getItem('recyclix_scans') || '[]');
+        const categoryCount = {};
+        const monthCount = {};
+
+        scans.forEach(scan => {
+            categoryCount[scan.category] = (categoryCount[scan.category] || 0) + 1;
+            monthCount[scan.month] = (monthCount[scan.month] || 0) + 1;
+        });
+
+        return { scans, categoryCount, monthCount, total: scans.length };
+    } catch (e) {
+        return { scans: [], categoryCount: {}, monthCount: {}, total: 0 };
+    }
+}
+
+
+// ── Claude API Call ──────────────────────────────────
+// Sends the classified label to our server.js
+// which then securely calls the Claude API
+
+async function getAIAdvice(wasteLabel, category, confidence) {
+    const chatBubble = document.querySelector('#resultChat .ai-bubble');
+    if (!chatBubble) return;
+
+    // Show a loading state in the chat bubble
+    chatBubble.innerHTML = `
+        <strong>Classification Complete.</strong><br><br>
+        <span style="color: var(--primary-aqua);">
+            <i class="fa-solid fa-spinner fa-spin"></i> Getting AI disposal advice...
+        </span>`;
+
+    try {
+        const response = await fetch(`${SERVER_URL}/api/classify`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ wasteLabel, category, confidence })
+        });
+
+        if (!response.ok) throw new Error('Server error');
+
+        const data = await response.json();
+
+        chatBubble.innerHTML = `
+            <strong>Classification Complete.</strong><br><br>
+            <span class="green-text">
+                <i class="fa-solid fa-bolt"></i> ${data.advice}
+            </span>`;
+
+    } catch (error) {
+        console.error('AI Advice Error:', error);
+        // Friendly fallback if server is offline
+        chatBubble.innerHTML = `
+            <strong>Classification Complete.</strong><br><br>
+            <span class="green-text">
+                <i class="fa-solid fa-info-circle"></i>
+                Item identified as <strong>${wasteLabel}</strong> (${category}).
+                Please check your local BMC waste disposal guidelines for proper handling.
+                <br><br><small style="color: #94a3b8;">⚠️ AI advice unavailable — make sure the server is running.</small>
+            </span>`;
+    }
+}
+
 
 // --- File Upload & Camera Integration ---
 const uploadZone = document.getElementById("uploadZone");
@@ -50,74 +174,108 @@ if (typeof mobilenet !== 'undefined') {
     }).catch(err => console.error("Model load error:", err));
 }
 
+
+
+// ── Main Image Handler ───────────────────────────────
 function handleImageInput(event) {
     const file = event.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            // Hide idle state, show preview and scanning animation
-            uploadIdle.classList.add("hidden");
-            uploadResult.classList.add("hidden");
-            resultChat.classList.add("hidden");
-            
-            previewContainer.classList.remove("hidden");
-            // Set source first to trigger onload
-            imagePreview.onload = () => {
-                if (aiModel) {
-                    aiModel.classify(imagePreview).then(predictions => {
-                        const topPrediction = predictions[0];
-                        const label = topPrediction.className.split(',')[0].trim();
-                        resultTitle.innerHTML = label.charAt(0).toUpperCase() + label.slice(1);
-                        
-                        // Waste Categorization Logic
-                        let tagStyle = "background: #fefce8; color: #854d0e;";
-                        let tagIcon = "fa-trash", tagText = "General Waste";
-                        const lowerLabel = label.toLowerCase();
-                        
-                        if (/(plastic|bottle|jug|cup|container|bag|wrapper|packaging)/.test(lowerLabel)) {
-                            tagStyle = "background: #dbeafe; color: #1e3a8a;";
-                            tagIcon = "fa-recycle"; tagText = "Plastic Recycling (Blue Bin)";
-                        } else if (/(paper|cardboard|carton|envelope|box|book|magazine)/.test(lowerLabel)) {
-                            tagStyle = "background: #dbeafe; color: #1e3a8a;";
-                            tagIcon = "fa-box"; tagText = "Paper/Cardboard (Blue Bin)";
-                        } else if (/(glass|jar|wine|beer)/.test(lowerLabel)) {
-                            tagStyle = "background: #dcfce3; color: #166534;";
-                            tagIcon = "fa-wine-glass"; tagText = "Glass (Green Bin)";
-                        } else if (/(metal|can|tin|aluminum|steel|spoon|fork)/.test(lowerLabel)) {
-                            tagStyle = "background: #e2e8f0; color: #334155;";
-                            tagIcon = "fa-spray-can"; tagText = "Metal/Aluminium (Blue Bin)";
-                        } else if (/(apple|banana|orange|fruit|vegetable|food|plant|leaf|wood)/.test(lowerLabel)) {
-                            tagStyle = "background: #dcfce3; color: #166534;";
-                            tagIcon = "fa-leaf"; tagText = "Organic Waste (Compost)";
-                        } else if (/(computer|laptop|phone|monitor|mouse|keyboard|screen|tv)/.test(lowerLabel)) {
-                            tagStyle = "background: #fee2e2; color: #991b1b;";
-                            tagIcon = "fa-plug"; tagText = "E-Waste / Hazardous";
-                        }
-                        
-                        let htmlTags = `<span class="tag" style="${tagStyle}"><i class="fa-solid ${tagIcon}"></i> ${tagText}</span>`;
-                        htmlTags += `<span class="tag tag-green"><i class="fa-solid fa-leaf"></i> ${(topPrediction.probability * 100).toFixed(1)}% Confidence</span>`;
-                        resultTags.innerHTML = htmlTags;
+    if (!file) return;
 
-                        // Add processing delay visual
-                        setTimeout(() => {
-                            uploadLoading.classList.add("hidden");
-                            scanLine.classList.add("hidden");
-                            previewOverlay.style.display = "none";
-                            uploadResult.classList.remove("hidden");
-                            resultChat.classList.remove("hidden");
-                        }, 1000);
-                    });
-                } else {
-                    resultTitle.innerHTML = "Model Still Loading...";
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+        // Reset UI state
+        uploadIdle.classList.add("hidden");
+        uploadResult.classList.add("hidden");
+        resultChat.classList.add("hidden");
+        previewContainer.classList.remove("hidden");
+
+        imagePreview.onload = () => {
+            if (aiModel) {
+                aiModel.classify(imagePreview).then(predictions => {
+                    const topPrediction = predictions[0];
+                    const label = topPrediction.className.split(',')[0].trim();
+                    const confidence = (topPrediction.probability * 100).toFixed(1);
+
+                    // Display the detected item name
+                    resultTitle.innerHTML = label.charAt(0).toUpperCase() + label.slice(1);
+
+                    // ── Waste Categorization Logic ───────────────
+                    const lowerLabel = label.toLowerCase();
+                    let tagStyle = "background: #fefce8; color: #854d0e;";
+                    let tagIcon  = "fa-trash";
+                    let tagText  = "General Waste";
+                    let category = "General Waste";
+
+                    if (/(plastic|bottle|jug|cup|container|bag|wrapper|packaging)/.test(lowerLabel)) {
+                        tagStyle = "background: #dbeafe; color: #1e3a8a;";
+                        tagIcon  = "fa-recycle";
+                        tagText  = "Plastic Recycling (Blue Bin)";
+                        category = "Plastic";
+                    } else if (/(paper|cardboard|carton|envelope|box|book|magazine|newspaper)/.test(lowerLabel)) {
+                        tagStyle = "background: #dbeafe; color: #1e3a8a;";
+                        tagIcon  = "fa-box";
+                        tagText  = "Paper/Cardboard (Blue Bin)";
+                        category = "Paper";
+                    } else if (/(glass|jar|wine|beer|goblet|vase)/.test(lowerLabel)) {
+                        tagStyle = "background: #dcfce3; color: #166534;";
+                        tagIcon  = "fa-wine-glass";
+                        tagText  = "Glass (Green Bin)";
+                        category = "Glass";
+                    } else if (/(metal|can|tin|aluminum|steel|spoon|fork|knife|pan)/.test(lowerLabel)) {
+                        tagStyle = "background: #e2e8f0; color: #334155;";
+                        tagIcon  = "fa-spray-can";
+                        tagText  = "Metal/Aluminium (Blue Bin)";
+                        category = "Metal";
+                    } else if (/(apple|banana|orange|fruit|vegetable|food|plant|leaf|wood|flower|peel)/.test(lowerLabel)) {
+                        tagStyle = "background: #dcfce3; color: #166534;";
+                        tagIcon  = "fa-leaf";
+                        tagText  = "Organic Waste (Compost)";
+                        category = "Organic";
+                    } else if (/(computer|laptop|phone|monitor|mouse|keyboard|screen|tv|tablet|battery|charger|circuit)/.test(lowerLabel)) {
+                        tagStyle = "background: #fee2e2; color: #991b1b;";
+                        tagIcon  = "fa-plug";
+                        tagText  = "E-Waste / Hazardous";
+                        category = "E-Waste";
+                    }
+
+                    // Build the result tags HTML
+                    let htmlTags = `<span class="tag" style="${tagStyle}">
+                        <i class="fa-solid ${tagIcon}"></i> ${tagText}
+                    </span>`;
+                    htmlTags += `<span class="tag tag-green">
+                        <i class="fa-solid fa-leaf"></i> ${confidence}% Confidence
+                    </span>`;
+                    resultTags.innerHTML = htmlTags;
+
+                    // Save this scan to localStorage for dashboard
+                    saveScanResult(label, category);
+
+                    // Show results after scan animation
                     setTimeout(() => {
                         uploadLoading.classList.add("hidden");
                         scanLine.classList.add("hidden");
                         previewOverlay.style.display = "none";
                         uploadResult.classList.remove("hidden");
+                        resultChat.classList.remove("hidden");
+
+                        // Call Claude API for smart advice
+                        getAIAdvice(label, category, confidence);
                     }, 1000);
-                }
-            };
-            
+                });
+
+            } else {
+                // Model hasn't loaded yet
+                resultTitle.innerHTML = "Model Still Loading...";
+                setTimeout(() => {
+                    uploadLoading.classList.add("hidden");
+                    scanLine.classList.add("hidden");
+                    previewOverlay.style.display = "none";
+                    uploadResult.classList.remove("hidden");
+                }, 1000);
+            }
+        };
+
             // Set src and display scan-line immediately
             imagePreview.src = e.target.result;
             scanLine.classList.remove("hidden");
@@ -126,14 +284,20 @@ function handleImageInput(event) {
         };
         reader.readAsDataURL(file);
     }
-}
+
 
 fileInput.addEventListener("change", handleImageInput);
 cameraInput.addEventListener("change", handleImageInput);
 
 // Drag and drop support
-uploadZone.addEventListener("dragover", (e) => { e.preventDefault(); uploadZone.style.borderColor = "var(--primary-aqua)"; });
-uploadZone.addEventListener("dragleave", (e) => { e.preventDefault(); uploadZone.style.borderColor = "#cbd5e1"; });
+uploadZone.addEventListener("dragover", (e) => {
+    e.preventDefault(); 
+    uploadZone.style.borderColor = "var(--primary-aqua)"; 
+});
+uploadZone.addEventListener("dragleave", (e) => { 
+    e.preventDefault(); 
+    uploadZone.style.borderColor = "#cbd5e1"; 
+});
 uploadZone.addEventListener("drop", (e) => {
     e.preventDefault();
     uploadZone.style.borderColor = "#cbd5e1";
@@ -220,6 +384,27 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     };
 
+    // ── Merge real scan data from localStorage into city view ──
+    // This makes the "City View" tab show real scan counts on top of baseline
+    function getMergedCityData() {
+        const stats  = getScanStats();
+        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
+        const base   = staticData.city;
+
+        // Add real scan counts to the recycled numbers
+        const enrichedRecycled = months.map((month, i) => {
+            const realCount = stats.monthCount[month] || 0;
+            return base.recycled[i] + realCount;
+        });
+
+        return {
+            accuracy: base.accuracy,
+            labels:   months,
+            reduced:  base.reduced,
+            recycled: enrichedRecycled
+        };
+    }
+    
     let accuracyChart, reductionChart;
 
     function renderCharts(view) {

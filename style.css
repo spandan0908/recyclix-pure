@@ -685,3 +685,83 @@ footer { border-top: 1px solid #e2e8f0; padding: 4rem 5% 2rem; display: flex; fl
 .social-links a:hover { color: var(--primary-blue); }
 [data-theme="dark"] .social-links a:hover { color: var(--primary-aqua); }
 .copyright { color: var(--text-muted); font-size: 0.875rem; margin-top: 1rem; }
+
+
+/* ===============================
+   HAMBURGER MENU (Mobile Only)
+   =============================== */
+
+/* Hide hamburger on desktop */
+.btn-hamburger {
+    display: none;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--text-dark);
+    cursor: pointer;
+    padding: 0.25rem;
+    transition: color 0.3s;
+}
+
+.btn-hamburger:hover { color: var(--primary-aqua); }
+
+/* On small screens: show hamburger, hide desktop links & Try Now button */
+@media (max-width: 768px) {
+
+    .btn-hamburger {
+        display: block;
+    }
+
+    /* Hide the Try Now button on mobile to save space */
+    .nav-actions .btn-primary {
+        display: none;
+    }
+
+    /* Nav links become a dropdown panel */
+    .nav-links {
+        display: none;
+        flex-direction: column;
+        gap: 0;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: var(--glass-bg);
+        backdrop-filter: blur(16px);
+        border-bottom: 1px solid var(--glass-border);
+        padding: 1rem 5%;
+        z-index: 999;
+        list-style: none;
+    }
+
+    /* Show the dropdown when nav-open class is toggled by script.js */
+    .nav-links.nav-open {
+        display: flex;
+    }
+
+    .nav-links li {
+        border-bottom: 1px solid var(--glass-border);
+    }
+
+    .nav-links li:last-child {
+        border-bottom: none;
+    }
+
+    .nav-links a {
+        display: block;
+        padding: 1rem 0;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+
+    /* Make navbar position relative so dropdown positions from it */
+    .navbar {
+        position: sticky;
+        top: 0;
+    }
+
+    /* Hero adjustments for small screens */
+    .hero h1 { font-size: 2.5rem; }
+    .hero { padding: 2rem 5%; min-height: auto; }
+    .hero-visual { display: none; } /* Hide the globe on very small screens */
+}
