@@ -97,7 +97,7 @@ scan saved to localStorage → updates dashboard charts
 |---|---|
 | Frontend | HTML5, CSS3, Vanilla JavaScript |
 | AI Classification | TensorFlow.js + MobileNet |
-| GenAI Reasoning | Claude claude-opus-4-5 (Anthropic) |
+| GenAI Reasoning | Gemini |
 | Charts | Chart.js |
 | Backend | Node.js + Express |
 | Icons | Font Awesome 6 |
