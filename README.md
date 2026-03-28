@@ -9,7 +9,6 @@ A smart web application that automatically classifies waste from images using Te
 ## 🌟 Features
 
 - 📸 **Live Image Classification** — Upload or capture waste photos; MobileNet AI classifies them instantly
-- 🤖 **Claude AI Advice** — After classification, Claude gives specific bin instructions and eco-tips
 - 📊 **Smart Dashboard** — Real-time charts tracking waste categories and recycling stats for Bhopal
 - 🌙 **Dark Mode** — Full dark/light theme toggle
 - 📱 **Mobile Responsive** — Works on phones and tablets with camera capture
