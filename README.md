@@ -1,6 +1,6 @@
 # ♻️ Recyclix AI — GenAI Waste Segregation System
 
-> Turning Trash into Data-Driven Insights using Computer Vision + Claude AI
+> Turning Trash into Data-Driven Insights 
 
 A smart web application that automatically classifies waste from images using TensorFlow.js MobileNet, then uses the Groq AI to provide intelligent disposal advice and recycling recommendations.
 
@@ -23,7 +23,7 @@ recyclix-ai/
 ├── index.html        ← Main webpage (all sections)
 ├── style.css         ← All styling including dark mode & mobile
 ├── script.js         ← All frontend logic (AI, charts, animations)
-├── server.js         ← Node.js backend (handles Claude API calls)
+├── server.js         ← Node.js backend (handles Groq and firebase API calls)
 ├── package.json      ← Project dependencies
 ├── .env              ← Your secret API key (DO NOT COMMIT)
 ├── .env.example      ← Template for .env (safe to commit)
@@ -54,7 +54,7 @@ This reads `package.json` and installs Express, Anthropic SDK etc. into a `node_
 ```bash
 cp .env.example .env
 ```
-Then open `.env` in any text editor and replace `your_claude_api_key_here` with your actual key from https://console.anthropic.com
+Then open `.env` in any text editor and replace `your_groq_api_key_here` with your actual key from https://console.anthropic.com
 
 ### Step 5 — Start the Server
 ```bash
